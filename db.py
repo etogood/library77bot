@@ -26,6 +26,11 @@ class Class(BaseModel):
     class Meta:
         table_name = 'Classes'
 
+class YouthClubApplication(BaseModel):
+    application_id = AutoField(column_name="ApplicationId")
+    name = TextField(column_name="Name", null=False)
+    age = TextField(column_name="age", null=False)
+
 cursor = conn.cursor()
 
 # Методы
@@ -38,7 +43,7 @@ def get_pushkin_card_classes_list():
     return s
 
 def get_classes():
-    return Class.select().where(Class.class_id > 0)
+    return Class.select()
 
 # МЕСТО ДЛЯ КОММАНД
 
