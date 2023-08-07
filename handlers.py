@@ -12,9 +12,9 @@ router = Router()
 async def start_handler(msg: Message):
     await msg.answer(text.greet.format(name=msg.from_user.full_name), reply_markup=kb.main_menu)
 
-@router.message(F.text == "◀️ Выйти в меню")
+@router.message(F.text == text.menu)
 async def menu(msg: Message):
-    await msg.answer(text.menu, reply_markup=kb.main_menu)
+    await msg.answer("Что вас интересует?", reply_markup=kb.main_menu)
 
 # Расписание
 @router.message(F.text == text.schedule_item)
@@ -44,4 +44,4 @@ async def pushkin_card(msg: Message):
 # Кружки
 @router.message(F.text == text.classes_item)
 async def classes(msg: Message):
-    await msg.answer("text\.classes", reply_markup=kb.main_menu)
+    await msg.answer(text.classes_menu, reply_markup=kb.classes_menu)

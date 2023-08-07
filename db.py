@@ -1,5 +1,4 @@
 from peewee import *
-from pathlib import Path
 
 conn = SqliteDatabase("db.sqlite")
 
@@ -33,10 +32,13 @@ cursor = conn.cursor()
 
 def get_pushkin_card_classes_list():
     s = ''
-    cur_query = Class.select(Class.name).where(Class.pushkin_card == True)
-    for item in cur_query.dicts().execute():
-        s += "\n• " + item['name'] 
+    query = Class.select(Class.name).where(Class.pushkin_card == True)
+    for item in query:
+        s += "\n• " + item.name
     return s
+
+def get_classes():
+    return Class.select().where(Class.class_id > 0)
 
 # МЕСТО ДЛЯ КОММАНД
 
