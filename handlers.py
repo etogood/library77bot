@@ -4,7 +4,6 @@ from aiogram.filters import Command
 
 import kb
 import text
-import db
 
 router = Router()
 
@@ -17,31 +16,31 @@ async def menu(msg: Message):
     await msg.answer("Что вас интересует?", reply_markup=kb.main_menu)
 
 # Расписание
-@router.message(F.text == text.schedule_item)
+@router.message(F.text == text.schedule_button_text)
 async def schedule(msg: Message):
     await msg.answer(text.schedule, reply_markup=kb.main_menu)
 
 # Мероприятия
-@router.message(F.text == text.events_item)
+@router.message(F.text == text.events_button_text)
 async def events(msg: Message):
     await msg.answer("text\.events", reply_markup=kb.main_menu)
 
 # Молодёжный клуб РГО
-@router.message(F.text == text.youth_club_item)
+@router.message(F.text == text.youth_club_button_text)
 async def youth_club(msg: Message):
     await msg.answer("text\.youthclub", reply_markup=kb.main_menu)
 
 # Музей
-@router.message(F.text == text.museum_item)
+@router.message(F.text == text.museum_button_text)
 async def museum(msg: Message):
     await msg.answer("text\.museum", reply_markup=kb.main_menu)
 
 # Пушкинская карта
-@router.message(F.text == text.pushkin_card_item)
+@router.message(F.text == text.pushkin_card_button_text)
 async def pushkin_card(msg: Message):
     await msg.answer(text.pushkin_card, reply_markup=kb.main_menu)
 
 # Кружки
-@router.message(F.text == text.classes_item)
+@router.message(F.text == text.classes_button_text)
 async def classes(msg: Message):
     await msg.answer(text.classes_menu, reply_markup=kb.classes_menu)
