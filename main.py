@@ -8,12 +8,12 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config_reader import config
 from handlers import basic_router, club_application_router
 
+bot = Bot(token=config.bot_token.get_secret_value(), parse_mode=ParseMode.HTML)
 
 async def main():
     logging.basicConfig(
         level=logging.INFO, 
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
-    bot = Bot(token=config.bot_token.get_secret_value(), parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(basic_router)
     dp.include_router(club_application_router)

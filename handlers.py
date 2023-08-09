@@ -1,4 +1,9 @@
+import asyncio
+
+from contextlib import suppress
+
 from aiogram import types, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 from aiogram.filters import Command, Text
 from aiogram.fsm.context import FSMContext
@@ -11,7 +16,14 @@ import states
 basic_router = Router()
 club_application_router = Router()
 
-# Replies ----------------------------------------------------------------------------------------------------
+temp_msgs = []
+
+async def remove_temp_msgs():
+    for msg in temp_msgs:
+        temp_msgs.remove(msg)
+        await msg.delete()
+
+# Menu ----------------------------------------------------------------------------------------------------
 
 # /start
 @basic_router.message(Command("start"))
@@ -19,51 +31,69 @@ club_application_router = Router()
 async def cmd_start(msg: Message):
     await msg.answer(text.greet.format(name = msg.from_user.full_name), reply_markup = kb.main_menu)
 
-# /cancel
-@basic_router.message(Command(commands=["cancel"]))
-@basic_router.message(Text(text="отмена", ignore_case=True))
-async def cmd_cancel(message: Message, state: FSMContext):
+
+@basic_router.message(Command("menu"))
+@basic_router.message(Text(text="меню", ignore_case=True))
+async def cmd_menu(msg: Message):
+    await msg.answer(text.main_menu, reply_markup = kb.main_menu)
+
+# Отмена (Inline)
+@basic_router.callback_query(F.data == "cancel_action")
+async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await message.answer(text="Действие отменено", reply_markup = kb.main_menu)
+    await callback.message.edit_text(text = "❌ Действие отменено")
+    await callback.answer()
+    await asyncio.sleep(1)
+    await callback.message.delete()
+    await callback.message.answer(text.main_menu, reply_markup = kb.main_menu)
 
 # Главное меню
-@basic_router.message(Text(text.main_menu))
-async def main_menu(msg: Message, state: FSMContext):
-    await msg.answer("Что вас интересует?", reply_markup = kb.main_menu)
+@basic_router.callback_query(F.data == "to_main_menu")
+async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
+    await callback.message.edit_text(text = text.main_menu, reply_markup = kb.main_menu)
+    await callback.answer()
 
 # Расписание
-@basic_router.message(Text(text.schedule_button_text))
-async def schedule(msg: Message):
-    await msg.answer(text.schedule, reply_markup = kb.main_menu)
+@basic_router.callback_query(F.data == "schedule")
+async def schedule(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.schedule, reply_markup = kb.main_menu)
+    await callback.answer()
 
 # Мероприятия
-@basic_router.message(Text(text.events_button_text))
-async def events(msg: Message):
-    await msg.answer(text.empty_button_text, reply_markup = kb.main_menu)
+@basic_router.callback_query(F.data == "events")
+async def events(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.events, reply_markup = kb.get_events_list())
+    await callback.answer()
 
 # Молодёжный клуб РГО
-@basic_router.message(Text(text.youth_club_button_text))
-async def youth_club(msg: Message):
-    await msg.answer(text.youth_club, reply_markup = kb.youth_club_menu)
+@basic_router.callback_query(F.data == "youth_club")
+async def youth_club(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.youth_club, reply_markup = kb.youth_club_menu)
+    await callback.answer()
 
 # Музей
-@basic_router.message(Text(text.museum_button_text))
-async def museum(msg: Message):
-    await msg.answer(text.empty_button_text, reply_markup = kb.main_menu)
+@basic_router.callback_query(F.data == "museum")
+async def museum(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.empty_button_text, reply_markup = kb.main_menu)
+    await callback.answer()
 
 # Пушкинская карта
-@basic_router.message(Text(text.pushkin_card_button_text))
-async def pushkin_card(msg: Message):
-    await msg.answer(text.pushkin_card, reply_markup = kb.main_menu)
+@basic_router.callback_query(F.data == "pushkin_card")
+async def pushkin_card(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.pushkin_card, reply_markup = kb.main_menu)
+    await callback.answer()
 
 # Кружки
-@basic_router.message(Text(text.classes_button_text))
-async def classes(msg: Message):
-    await msg.answer(text.classes_menu, reply_markup = kb.classes_menu)
+@basic_router.callback_query(F.data == "classes")
+async def classes(callback: types.CallbackQuery):
+    await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list())
+    await callback.answer()
 
 
-# Inlines ----------------------------------------------------------------------------------------------------
+# FSM ----------------------------------------------------------------------------------------------------
+
+#region FSM Оформление заявки на вступление в молодёжный клуб РГО 
 
 @club_application_router.callback_query(F.data == "apply_for_club_membership")
 async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMContext):
@@ -74,23 +104,55 @@ async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMCon
 @club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
-    await message.answer(text = "Теперь введите ваш возраст:")
-    await state.set_state(states.ApplyForClubMembership.fill_age)
+    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.return_menu)
+    await state.set_state(states.ApplyForClubMembership.fill_phone)
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name)
 async def name_filled_incorrectly(message: Message):
-    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:")
+    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.return_menu)
 
-@club_application_router.message(states.ApplyForClubMembership.fill_age, F.text.regexp(r"^(\d+)$"))
-async def age_filled(message: Message, state: FSMContext):
-    await state.update_data(filled_age = message.text)
+@club_application_router.message(states.ApplyForClubMembership.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+async def phone_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_phone = message.text)
     user_data = await state.get_data()
-    db.YouthClubApplication.create(name=user_data['filled_name'], age=user_data['filled_age'])
+    db.YouthClubApplication.create(name = user_data['filled_name'], phone = user_data['filled_phone'])
     await message.answer(
-        text = f"Ваша заявка сформирована: {user_data['filled_name']}, {user_data['filled_age']}!\n\nОжидайте ответа от руководителя в личные сообщения",
-        reply_markup = kb.main_menu)
+        text = f"Ваша заявка сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\n\nОжидайте ответа в личные сообщения")
     await state.clear()
+    await message.answer(text.main_menu, reply_markup = kb.main_menu)
 
-@club_application_router.message(states.ApplyForClubMembership.fill_age)
-async def age_filled_incorrectly(message: Message):
-    await message.answer(text="Значение возраста должно содержать одно число\n\nПопробуйте ввести свой возраст ещё раз:")
+@club_application_router.message(states.ApplyForClubMembership.fill_phone)
+async def phone_filled_incorrectly(message: Message):
+    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.return_menu)
+
+#endregion
+
+#region Buttons factory filters (Мероприятия, кружки) ----------------------------------------------------------------------------------------------------
+async def send_event_info(message: types.Message, text: str):
+    with suppress(TelegramBadRequest):
+        await message.edit_text(text = text, reply_markup = kb.get_events_list())
+
+@basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_event"))
+async def callbacks_show_event_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
+    await send_event_info(callback.message, db.get_full_event_text(callback_data.id))
+    await callback.answer()
+
+async def send_class_info(message: types.Message, text: str, callback_data: kb.CallbackFactory):
+    with suppress(TelegramBadRequest):
+        await message.edit_text(text = text, reply_markup = kb.get_classes_list())
+        pics = db.get_class_pictures(callback_data.id)
+        await remove_temp_msgs() #TODO Remove 2 and more pics at once
+        for pic in pics:
+            msg = await message.answer_photo(pic)
+            temp_msgs.append(msg)
+        
+@basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_class"))
+async def callbacks_show_class_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
+    await send_class_info(callback.message, db.get_full_class_text(callback_data.id), callback_data)
+    await callback.answer()
+
+@basic_router.callback_query(kb.CallbackFactory.filter(F.action == "go_back"))
+async def callbacks_go_back_fab(callback: types.CallbackQuery):
+    await callback.answer("Ничего не найдено")
+
+#endregion

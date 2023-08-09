@@ -1,19 +1,39 @@
 from peewee import *
 
-conn = SqliteDatabase("db.sqlite")
+from aiogram.types import FSInputFile
+
+from contextlib import suppress
+
+db = SqliteDatabase("db.sqlite")
 
 class BaseModel(Model):
     class Meta:
-        database = conn
+        database = db
 
 # Мероприятия
 class Event(BaseModel):
     event_id = AutoField(column_name="EventId")
     name = TextField(column_name="Name", null=True)
+    short_name = TextField(column_name="ShortName", null=True)
     text = TextField(column_name="Text", null=True)
+    is_free = BooleanField(column_name="IsFree", null=True)
+    cost = TextField(column_name="Cost", null=True)
+    date = TextField(column_name="Date", null=True)
+    address = TextField(column_name="Address", null=True)
+    age_cens = TextField(column_name="AgeCens", null=True)
 
     class Meta:
         table_name = 'Events'
+
+# Запись на мероприятие
+class EventApplication(BaseModel):
+    application_id = AutoField(column_name="ApplicationId")
+    event_id = ForeignKeyField(Event, column_name="EventId")
+    name = TextField(column_name="Name", null=False)
+    phone = TextField(column_name="Phone", null=True)
+
+    class Meta:
+        table_name = 'EventApplications'
 
 # Кружки
 class Class(BaseModel):
@@ -21,29 +41,88 @@ class Class(BaseModel):
     name = TextField(column_name="Name", null=True)
     text = TextField(column_name="Text", null=True)
     picture = TextField(column_name="PicturePath", null=True)
-    pushkin_card = BooleanField(column_name="IsOnPushkinCard", null=False)
+    is_on_pushkin_card = BooleanField(column_name="IsOnPushkinCard", null=False)
     
     class Meta:
         table_name = 'Classes'
 
+# Запись в клуб РГО
 class YouthClubApplication(BaseModel):
     application_id = AutoField(column_name="ApplicationId")
     name = TextField(column_name="Name", null=False)
-    age = TextField(column_name="age", null=False)
+    phone = TextField(column_name="Phone", null=True)
 
-cursor = conn.cursor()
+    class Meta:
+        table_name = 'YouthClubApplications'
 
-# Методы
+# Экскурсия / музей
+class Museum(BaseModel):
+    museum_id = AutoField(column_name="MuseumId")
+    name = TextField(column_name="Name", null=True)
+    decription = TextField(column_name="Decription", null=True)
+
+    class Meta:
+        table_name = 'Museums'
+
+# Запись на экскурсию
+class MuseumApplication(BaseModel):
+    application_id = AutoField(column_name="ApplicationId")
+    museum_id = ForeignKeyField(Museum, column_name="MuseumId")
+    name = TextField(column_name="Name", null=True)
+    phone = TextField(column_name="Phone", null=True)
+
+    class Meta:
+        table_name = 'MuseumApplications'
+
+cursor = db.cursor()
+
+#region Методы
 
 def get_pushkin_card_classes_list():
     s = ''
-    query = Class.select(Class.name).where(Class.pushkin_card == True)
+    query = Class.select(Class.name).where(Class.is_on_pushkin_card == True)
     for item in query:
         s += "\n• " + item.name
     return s
 
 def get_classes():
     return Class.select()
+
+def get_events():
+    return Event.select()
+
+def get_full_event_text(id: int):
+    event = Event.get_by_id(id)
+    text = '<b>' + str(event.name) + '</b>'\
+    + '\n\n' + str(event.text)\
+    + '\n\n' + "Стоимость посещения: "\
+    + (str(event.cost), "бесплатно")[event.is_free]\
+    + '\n\n' + str(event.date)\
+    + '\n\n' + str(event.address)\
+    + '\n\n' + str(event.age_cens)
+    return text
+
+def get_full_class_text(id: int):
+    clss = Class.get_by_id(id)
+    text = '<b>' + str(clss.name) + '</b>'\
+    + '\n\n' + str(clss.text)\
+    + '\n\n' + ('', "<i>Доступно по пушкинской карте</i>")[clss.is_on_pushkin_card]
+    return text
+
+def get_class_pictures(id: int):
+    with suppress(AttributeError):
+        clss = Class.get_by_id(id)
+        files = []
+        pics = clss.picture.split(',')
+        for pic in pics:
+            files.append(FSInputFile("resources/" + pic))
+        return files
+        
+
+
+#endregion
+
+Event.delete_by_id(1)
 
 # МЕСТО ДЛЯ КОММАНД
 
@@ -94,6 +173,4 @@ def get_classes():
 #              picture="chinese.jpg",
 #              pushkin_card=True)
 
-
-
-conn.close()
+db.close()
