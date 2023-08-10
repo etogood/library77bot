@@ -16,12 +16,14 @@ import states
 basic_router = Router()
 club_application_router = Router()
 
-temp_msgs = []
+class_media_temp_msg = None
 
 async def remove_temp_msgs():
-    for msg in temp_msgs:
-        temp_msgs.remove(msg)
-        await msg.delete()
+    if class_media_temp_msg is not None:
+        for msg_id in range(0, len(class_media_temp_msg)):
+            await class_media_temp_msg[-1].delete()
+            class_media_temp_msg.pop()
+
 
 # Menu ----------------------------------------------------------------------------------------------------
 
@@ -37,58 +39,68 @@ async def cmd_start(msg: Message):
 async def cmd_menu(msg: Message):
     await msg.answer(text.main_menu, reply_markup = kb.main_menu)
 
-# Отмена (Inline)
+# Отмена
 @basic_router.callback_query(F.data == "cancel_action")
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    await callback.message.edit_text(text = "❌ Действие отменено")
-    await callback.answer()
-    await asyncio.sleep(1)
-    await callback.message.delete()
-    await callback.message.answer(text.main_menu, reply_markup = kb.main_menu)
+    with suppress(TelegramBadRequest):
+        await state.clear()
+        await remove_temp_msgs()
+        await callback.message.edit_text(text = "❌ Действие отменено")
+        await callback.answer()
+        await asyncio.sleep(1)
+        await callback.message.delete()
+        await callback.message.answer(text.main_menu, reply_markup = kb.main_menu)
 
 # Главное меню
 @basic_router.callback_query(F.data == "to_main_menu")
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    await callback.message.edit_text(text = text.main_menu, reply_markup = kb.main_menu)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await state.clear()
+        await remove_temp_msgs()
+        await callback.message.edit_text(text = text.main_menu, reply_markup = kb.main_menu)
+        await callback.answer()
 
 # Расписание
 @basic_router.callback_query(F.data == "schedule")
 async def schedule(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.schedule, reply_markup = kb.main_menu)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.schedule, reply_markup = kb.main_menu)
+        await callback.answer()
 
 # Мероприятия
 @basic_router.callback_query(F.data == "events")
 async def events(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.events, reply_markup = kb.get_events_list())
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.events, reply_markup = kb.get_events_list())
+        await callback.answer()
 
 # Молодёжный клуб РГО
 @basic_router.callback_query(F.data == "youth_club")
 async def youth_club(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.youth_club, reply_markup = kb.youth_club_menu)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.youth_club, reply_markup = kb.youth_club_menu)
+        await callback.answer()
 
 # Музей
 @basic_router.callback_query(F.data == "museum")
 async def museum(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.empty_button_text, reply_markup = kb.main_menu)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.empty_button_text, reply_markup = kb.main_menu)
+        await callback.answer()
 
 # Пушкинская карта
 @basic_router.callback_query(F.data == "pushkin_card")
 async def pushkin_card(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.pushkin_card, reply_markup = kb.main_menu)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.pushkin_card, reply_markup = kb.main_menu)
+        await callback.answer()
 
 # Кружки
 @basic_router.callback_query(F.data == "classes")
 async def classes(callback: types.CallbackQuery):
-    await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list())
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list())
+        await callback.answer()
 
 
 # FSM ----------------------------------------------------------------------------------------------------
@@ -97,9 +109,10 @@ async def classes(callback: types.CallbackQuery):
 
 @club_application_router.callback_query(F.data == "apply_for_club_membership")
 async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.return_menu)
-    await state.set_state(states.ApplyForClubMembership.fill_name)
-    await callback.answer(text="Оформление заявки начато")
+    with suppress(TelegramBadRequest):
+        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.return_menu)
+        await state.set_state(states.ApplyForClubMembership.fill_name)
+        await callback.answer(text="Оформление заявки начато")
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
 async def name_filled(message: Message, state: FSMContext):
@@ -134,25 +147,31 @@ async def send_event_info(message: types.Message, text: str):
 
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_event"))
 async def callbacks_show_event_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
-    await send_event_info(callback.message, db.get_full_event_text(callback_data.id))
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await send_event_info(callback.message, db.get_full_event_text(callback_data.id))
+        await callback.answer()
 
 async def send_class_info(message: types.Message, text: str, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
+        global class_media_temp_msg
         await message.edit_text(text = text, reply_markup = kb.get_classes_list())
         pics = db.get_class_pictures(callback_data.id)
-        await remove_temp_msgs() #TODO Remove 2 and more pics at once
-        for pic in pics:
-            msg = await message.answer_photo(pic)
-            temp_msgs.append(msg)
+        if class_media_temp_msg is not None:
+            for msg in class_media_temp_msg:
+                await msg.delete()
+        if pics is not None: class_media_temp_msg = await message.answer_media_group(media = pics)
+        else: class_media_temp_msg = None
+
         
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_class"))
 async def callbacks_show_class_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
-    await send_class_info(callback.message, db.get_full_class_text(callback_data.id), callback_data)
-    await callback.answer()
+    with suppress(TelegramBadRequest):
+        await send_class_info(callback.message, db.get_full_class_text(callback_data.id), callback_data)
+        await callback.answer()
 
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "go_back"))
 async def callbacks_go_back_fab(callback: types.CallbackQuery):
-    await callback.answer("Ничего не найдено")
+    with suppress(TelegramBadRequest):
+        await callback.answer("Ничего не найдено")
 
 #endregion

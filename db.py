@@ -1,6 +1,6 @@
 from peewee import *
 
-from aiogram.types import FSInputFile
+from aiogram.types import FSInputFile, InputMediaPhoto
 
 from contextlib import suppress
 
@@ -115,7 +115,7 @@ def get_class_pictures(id: int):
         files = []
         pics = clss.picture.split(',')
         for pic in pics:
-            files.append(FSInputFile("resources/" + pic))
+            files.append(InputMediaPhoto(media = FSInputFile("resources/" + pic)))
         return files
         
 
