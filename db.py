@@ -122,7 +122,6 @@ def get_class_pictures(id: int):
 
 #endregion
 
-Event.delete_by_id(1)
 
 # МЕСТО ДЛЯ КОММАНД
 

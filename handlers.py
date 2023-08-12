@@ -16,14 +16,6 @@ import states
 basic_router = Router()
 club_application_router = Router()
 
-class_media_temp_msg = None
-
-async def remove_temp_msgs():
-    if class_media_temp_msg is not None:
-        for msg_id in range(0, len(class_media_temp_msg)):
-            await class_media_temp_msg[-1].delete()
-            class_media_temp_msg.pop()
-
 
 # Menu ----------------------------------------------------------------------------------------------------
 
@@ -44,19 +36,16 @@ async def cmd_menu(msg: Message):
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
         await state.clear()
-        await remove_temp_msgs()
         await callback.message.edit_text(text = "❌ Действие отменено")
         await callback.answer()
         await asyncio.sleep(1)
         await callback.message.delete()
-        await callback.message.answer(text.main_menu, reply_markup = kb.main_menu)
 
 # Главное меню
 @basic_router.callback_query(F.data == "to_main_menu")
 async def main_menu(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
         await state.clear()
-        await remove_temp_msgs()
         await callback.message.edit_text(text = text.main_menu, reply_markup = kb.main_menu)
         await callback.answer()
 
@@ -153,14 +142,9 @@ async def callbacks_show_event_fab(callback: types.CallbackQuery, callback_data:
 
 async def send_class_info(message: types.Message, text: str, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
-        global class_media_temp_msg
         await message.edit_text(text = text, reply_markup = kb.get_classes_list())
         pics = db.get_class_pictures(callback_data.id)
-        if class_media_temp_msg is not None:
-            for msg in class_media_temp_msg:
-                await msg.delete()
-        if pics is not None: class_media_temp_msg = await message.answer_media_group(media = pics)
-        else: class_media_temp_msg = None
+        if pics != None: await message.answer_media_group(media = pics)
 
         
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_class"))
