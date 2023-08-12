@@ -15,6 +15,8 @@ import states
 
 basic_router = Router()
 club_application_router = Router()
+event_application_router = Router()
+museum_application_router = Router()
 
 
 # Menu ----------------------------------------------------------------------------------------------------
@@ -25,7 +27,7 @@ club_application_router = Router()
 async def cmd_start(msg: Message):
     await msg.answer(text.greet.format(name = msg.from_user.full_name), reply_markup = kb.main_menu)
 
-
+# /menu
 @basic_router.message(Command("menu"))
 @basic_router.message(Text(text="меню", ignore_case=True))
 async def cmd_menu(msg: Message):
@@ -60,7 +62,7 @@ async def schedule(callback: types.CallbackQuery):
 @basic_router.callback_query(F.data == "events")
 async def events(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):
-        await callback.message.edit_text(text.events, reply_markup = kb.get_events_list())
+        await callback.message.edit_text(text.events, reply_markup = kb.get_events_list(None))
         await callback.answer()
 
 # Молодёжный клуб РГО
@@ -99,19 +101,19 @@ async def classes(callback: types.CallbackQuery):
 @club_application_router.callback_query(F.data == "apply_for_club_membership")
 async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
-        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.return_menu)
+        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.cancel_menu)
         await state.set_state(states.ApplyForClubMembership.fill_name)
         await callback.answer(text="Оформление заявки начато")
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
-    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.return_menu)
+    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.cancel_menu)
     await state.set_state(states.ApplyForClubMembership.fill_phone)
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name)
 async def name_filled_incorrectly(message: Message):
-    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.return_menu)
+    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.cancel_menu)
 
 @club_application_router.message(states.ApplyForClubMembership.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
 async def phone_filled(message: Message, state: FSMContext):
@@ -125,19 +127,56 @@ async def phone_filled(message: Message, state: FSMContext):
 
 @club_application_router.message(states.ApplyForClubMembership.fill_phone)
 async def phone_filled_incorrectly(message: Message):
-    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.return_menu)
+    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.cancel_menu)
+
+#endregion
+
+#region FSM Оформление заявки на запись на мероприятие
+
+@event_application_router.callback_query(kb.CallbackFactory.filter(F.action == "apply_for_event"))
+async def apply_for_event(callback: types.CallbackQuery, callback_data: kb.CallbackFactory, state: FSMContext):
+    with suppress(TelegramBadRequest):
+        await state.update_data(event_id = callback_data.id)
+        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.cancel_menu)
+        await state.set_state(states.ApplyForEvent.fill_name)
+        await callback.answer(text="Оформление заявки начато")
+
+@event_application_router.message(states.ApplyForEvent.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
+async def name_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_name = message.text)
+    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.cancel_menu)
+    await state.set_state(states.ApplyForEvent.fill_phone)
+
+@event_application_router.message(states.ApplyForEvent.fill_name)
+async def name_filled_incorrectly(message: Message):
+    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.cancel_menu)
+
+@event_application_router.message(states.ApplyForEvent.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+async def phone_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_phone = message.text)
+    user_data = await state.get_data()
+    db.EventApplication.create(event_id = user_data['event_id'], name = user_data['filled_name'], phone = user_data['filled_phone'])
+    await message.answer(
+        text = f"Ваша заявка на \"{db.Event.get_by_id(user_data['event_id']).short_name}\" сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\
+        \n\nОжидайте ответа в личные сообщения")
+    await state.clear()
+    await message.answer(text.main_menu, reply_markup = kb.main_menu)
+
+@event_application_router.message(states.ApplyForEvent.fill_phone)
+async def phone_filled_incorrectly(message: Message):
+    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.cancel_menu)
 
 #endregion
 
 #region Buttons factory filters (Мероприятия, кружки) ----------------------------------------------------------------------------------------------------
-async def send_event_info(message: types.Message, text: str):
+async def send_event_info(message: types.Message, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
-        await message.edit_text(text = text, reply_markup = kb.get_events_list())
+        await message.edit_text(text = db.get_full_event_text(callback_data.id), reply_markup = kb.get_events_list(callback_data.id))
 
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_event"))
-async def callbacks_show_event_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
+async def show_event_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
-        await send_event_info(callback.message, db.get_full_event_text(callback_data.id))
+        await send_event_info(callback.message, callback_data)
         await callback.answer()
 
 async def send_class_info(message: types.Message, text: str, callback_data: kb.CallbackFactory):
@@ -148,13 +187,13 @@ async def send_class_info(message: types.Message, text: str, callback_data: kb.C
 
         
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "show_class"))
-async def callbacks_show_class_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
+async def show_class_fab(callback: types.CallbackQuery, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
         await send_class_info(callback.message, db.get_full_class_text(callback_data.id), callback_data)
         await callback.answer()
 
 @basic_router.callback_query(kb.CallbackFactory.filter(F.action == "go_back"))
-async def callbacks_go_back_fab(callback: types.CallbackQuery):
+async def go_back_fab(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):
         await callback.answer("Ничего не найдено")
 

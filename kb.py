@@ -26,10 +26,10 @@ main_menu = [
 ]
 main_menu = InlineKeyboardMarkup(inline_keyboard = main_menu, resize_keyboard = True)
 
-return_menu = InlineKeyboardMarkup(inline_keyboard = [[InlineKeyboardButton(text = text.cancel_action, callback_data = "cancel_action")]], resize_keyboard = True)
+cancel_menu = InlineKeyboardMarkup(inline_keyboard = [[InlineKeyboardButton(text = text.cancel_action, callback_data = "cancel_action")]], resize_keyboard = True)
 
 youth_club_menu = InlineKeyboardMarkup(
-    inline_keyboard = [[InlineKeyboardButton(text = text.apply_button_text, callback_data = "apply_for_club_membership", resize_keyboard = True)],
+    inline_keyboard = [[InlineKeyboardButton(text = text.apply_club_button_text, callback_data = "apply_for_club_membership", resize_keyboard = True)],
                        [InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu", resize_keyboard = True)]])
 
 def get_classes_list():
@@ -44,9 +44,13 @@ def get_classes_list():
     classes_builder.adjust(2)
     return classes_builder.as_markup(resize_keyboard = True)
 
-def get_events_list():
+def get_events_list(current_id: Optional[int]):
     events_builder = InlineKeyboardBuilder()
     event_dictionary = db.get_events()
+    if current_id != None: 
+        events_builder.button(
+            text = text.apply_event_button_text.format(name = db.Event.get_by_id(current_id).short_name), 
+            callback_data = CallbackFactory(action = "apply_for_event", id = current_id))
     try:
         for item in event_dictionary:
             events_builder.button(text = item.short_name, callback_data = CallbackFactory(action = "show_event", id = item.event_id))

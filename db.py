@@ -10,6 +10,8 @@ class BaseModel(Model):
     class Meta:
         database = db
 
+#region Tables
+
 # Мероприятия
 class Event(BaseModel):
     event_id = AutoField(column_name="EventId")
@@ -74,9 +76,15 @@ class MuseumApplication(BaseModel):
     class Meta:
         table_name = 'MuseumApplications'
 
-cursor = db.cursor()
+#endregion
 
 #region Методы
+
+def get_classes():
+    return Class.select()
+
+def get_events():
+    return Event.select()
 
 def get_pushkin_card_classes_list():
     s = ''
@@ -84,12 +92,6 @@ def get_pushkin_card_classes_list():
     for item in query:
         s += "\n• " + item.name
     return s
-
-def get_classes():
-    return Class.select()
-
-def get_events():
-    return Event.select()
 
 def get_full_event_text(id: int):
     event = Event.get_by_id(id)
@@ -117,8 +119,6 @@ def get_class_pictures(id: int):
         for pic in pics:
             files.append(InputMediaPhoto(media = FSInputFile("resources/" + pic)))
         return files
-        
-
 
 #endregion
 
