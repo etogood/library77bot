@@ -48,6 +48,16 @@ class Class(BaseModel):
     class Meta:
         table_name = 'Classes'
 
+# Запись в кружок
+class ClassApplication(BaseModel):
+    application_id = AutoField(column_name="ApplicationId")
+    class_id = ForeignKeyField(Class, column_name="ClassId")
+    name = TextField(column_name="Name", null=False)
+    phone = TextField(column_name="Phone", null=True)
+
+    class Meta:
+        table_name = 'ClassApplications'
+
 # Запись в клуб РГО
 class YouthClubApplication(BaseModel):
     application_id = AutoField(column_name="ApplicationId")
@@ -74,7 +84,14 @@ class MuseumApplication(BaseModel):
     phone = TextField(column_name="Phone", null=True)
 
     class Meta:
-        table_name = 'MuseumApplications'
+        table_name = "MuseumApplications"
+
+class Proposal(BaseModel):
+    proposal_id = AutoField(column_name="ProposalId")
+    text = TextField(column_name="Text", null=False)
+
+    class Meta:
+        table_name = "Proposals"
 
 #endregion
 
@@ -122,6 +139,7 @@ def get_class_pictures(id: int):
 
 #endregion
 
+Proposal.create_table()
 
 # МЕСТО ДЛЯ КОММАНД
 

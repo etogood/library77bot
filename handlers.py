@@ -16,6 +16,7 @@ import states
 basic_router = Router()
 club_application_router = Router()
 event_application_router = Router()
+class_application_router = Router()
 museum_application_router = Router()
 
 
@@ -93,6 +94,13 @@ async def classes(callback: types.CallbackQuery):
         await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list(None))
         await callback.answer()
 
+# Кружки
+@basic_router.callback_query(F.data == "partnership")
+async def partnership(callback: types.CallbackQuery):
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.partnership, reply_markup = kb.become_partner_menu)
+        await callback.answer()
+
 
 # FSM ----------------------------------------------------------------------------------------------------
 
@@ -121,7 +129,7 @@ async def phone_filled(message: Message, state: FSMContext):
     user_data = await state.get_data()
     db.YouthClubApplication.create(name = user_data['filled_name'], phone = user_data['filled_phone'])
     await message.answer(
-        text = f"Ваша заявка сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\n\nОжидайте ответа в личные сообщения")
+        text = f"Ваша заявка на вступление в клуб сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\n\nОжидайте ответа в личные сообщения")
     await state.clear()
     await message.answer(text.main_menu, reply_markup = kb.main_menu)
 
@@ -157,7 +165,7 @@ async def phone_filled(message: Message, state: FSMContext):
     user_data = await state.get_data()
     db.EventApplication.create(event_id = user_data['event_id'], name = user_data['filled_name'], phone = user_data['filled_phone'])
     await message.answer(
-        text = f"Ваша заявка на \"{db.Event.get_by_id(user_data['event_id']).short_name}\" сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\
+        text = f"Ваша заявка на запись на мероприятие \"{db.Event.get_by_id(user_data['event_id']).short_name}\" сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\
         \n\nОжидайте ответа в личные сообщения")
     await state.clear()
     await message.answer(text.main_menu, reply_markup = kb.main_menu)
@@ -167,6 +175,66 @@ async def phone_filled_incorrectly(message: Message):
     await message.answer(text = text.apply_phone_filled_incorrectly, reply_markup = kb.cancel_menu)
 
 #endregion
+
+#region FSM Оформление заявки на запись в кружок
+
+@class_application_router.callback_query(kb.CallbackFactory.filter(F.action == "apply_for_class"))
+async def apply_for_class(callback: types.CallbackQuery, callback_data: kb.CallbackFactory, state: FSMContext):
+    with suppress(TelegramBadRequest):
+        await state.update_data(class_id = callback_data.id)
+        await callback.message.answer(text = text.apply_name, reply_markup = kb.cancel_menu)
+        await state.set_state(states.ApplyForClass.fill_name)
+        await callback.answer(text="Оформление заявки начато")
+
+@class_application_router.message(states.ApplyForClass.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
+async def name_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_name = message.text)
+    await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
+    await state.set_state(states.ApplyForClass.fill_phone)
+
+@class_application_router.message(states.ApplyForClass.fill_name)
+async def name_filled_incorrectly(message: Message):
+    await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
+
+@class_application_router.message(states.ApplyForClass.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+async def phone_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_phone = message.text)
+    user_data = await state.get_data()
+    db.ClassApplication.create(class_id = user_data['class_id'], name = user_data['filled_name'], phone = user_data['filled_phone'])
+    await message.answer(
+        text = f"Ваша заявка на запись в кружок \"{db.Class.get_by_id(user_data['class_id']).name}\" сформирована: {user_data['filled_name']}, {user_data['filled_phone']}!\
+        \n\nОжидайте ответа в личные сообщения")
+    await state.clear()
+    await message.answer(text.main_menu, reply_markup = kb.main_menu)
+
+@class_application_router.message(states.ApplyForClass.fill_phone)
+async def phone_filled_incorrectly(message: Message):
+    await message.answer(text = text.apply_phone_filled_incorrectly, reply_markup = kb.cancel_menu)
+
+#endregion
+
+#region FSM Оформление заявки на вступление в молодёжный клуб РГО 
+
+@basic_router.callback_query(F.data == "become_partner")
+async def apply_for_proposal(callback: types.CallbackQuery, state: FSMContext):
+    with suppress(TelegramBadRequest):
+        await callback.message.answer(text = text.apply_proposal, reply_markup = kb.cancel_menu)
+        await state.set_state(states.ApplyForPartnership.fill_proposal)
+        await callback.answer(text = "Оформление заявки начато")
+
+@basic_router.message(states.ApplyForPartnership.fill_proposal)
+async def proposal_filled(message: Message, state: FSMContext):
+    await state.update_data(filled_proposal = message.text)
+    user_data = await state.get_data()
+    db.Proposal.create(text = user_data['filled_proposal'])
+    await message.answer(
+    text = f"Ваше предложение принято к рассмотрению!\
+    \n\nОжидайте ответа в личные сообщения")
+    await state.clear()
+    await message.answer(text.main_menu, reply_markup = kb.main_menu)
+
+#endregion
+
 
 #region Buttons factory filters (Мероприятия, кружки) ----------------------------------------------------------------------------------------------------
 async def send_event_info(message: types.Message, callback_data: kb.CallbackFactory):

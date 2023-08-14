@@ -18,7 +18,8 @@ main_menu = [
     [InlineKeyboardButton(text = text.youth_club_button_text, callback_data = "youth_club")],
     [InlineKeyboardButton(text = text.museum_button_text, callback_data = "museum")],
     [InlineKeyboardButton(text = text.pushkin_card_button_text, callback_data = "pushkin_card")],
-    [InlineKeyboardButton(text = text.classes_button_text, callback_data = "classes")]
+    [InlineKeyboardButton(text = text.classes_button_text, callback_data = "classes")],
+    [InlineKeyboardButton(text = text.partnership_button_text, callback_data = "partnership")],
 ]
 main_menu = InlineKeyboardMarkup(inline_keyboard = main_menu, resize_keyboard = True)
 
@@ -28,7 +29,11 @@ youth_club_menu = InlineKeyboardMarkup(
     inline_keyboard = [[InlineKeyboardButton(text = text.apply_club_button_text, callback_data = "apply_for_club_membership", resize_keyboard = True)],
                        [InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu", resize_keyboard = True)]])
 
-def get_classes_list(current_id: Optional[int]):
+become_partner_menu = InlineKeyboardMarkup(
+    inline_keyboard = [[InlineKeyboardButton(text = text.apply_partnership, callback_data = "become_partner", resize_keyboard = True)],
+                       [InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu", resize_keyboard = True)]])
+
+def get_classes_list(current_id: Optional[int]) -> InlineKeyboardMarkup :
     classes_builder = InlineKeyboardBuilder()
     apply_builder = InlineKeyboardBuilder()
 
@@ -51,7 +56,7 @@ def get_classes_list(current_id: Optional[int]):
             
     return InlineKeyboardMarkup(inline_keyboard = keyboard, resize_keyboard = True)
 
-def get_events_list(current_id: Optional[int]):
+def get_events_list(current_id: Optional[int]) -> InlineKeyboardMarkup :
     events_builder = InlineKeyboardBuilder()
     event_dictionary = db.get_events()
     if current_id != None: 
