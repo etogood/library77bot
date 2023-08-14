@@ -19,7 +19,6 @@ event_application_router = Router()
 class_application_router = Router()
 museum_application_router = Router()
 
-
 # Menu ----------------------------------------------------------------------------------------------------
 
 # /start
@@ -213,7 +212,7 @@ async def phone_filled_incorrectly(message: Message):
 
 #endregion
 
-#region FSM Оформление заявки на вступление в молодёжный клуб РГО 
+#region FSM Оформление предложения партнёрства 
 
 @basic_router.callback_query(F.data == "become_partner")
 async def apply_for_proposal(callback: types.CallbackQuery, state: FSMContext):
@@ -234,7 +233,6 @@ async def proposal_filled(message: Message, state: FSMContext):
     await message.answer(text.main_menu, reply_markup = kb.main_menu)
 
 #endregion
-
 
 #region Buttons factory filters (Мероприятия, кружки) ----------------------------------------------------------------------------------------------------
 async def send_event_info(message: types.Message, callback_data: kb.CallbackFactory):

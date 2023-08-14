@@ -1,8 +1,8 @@
 from peewee import *
-
 from aiogram.types import FSInputFile, InputMediaPhoto
-
 from contextlib import suppress
+
+import os.path
 
 db = SqliteDatabase("db.sqlite")
 
@@ -95,7 +95,7 @@ class Proposal(BaseModel):
 
 #endregion
 
-#region Методы
+#region Methods
 
 def get_classes():
     return Class.select()
@@ -139,10 +139,17 @@ def get_class_pictures(id: int):
 
 #endregion
 
-Proposal.create_table()
+if not os.path.exists('db.sqlite'):
+    Event.create_table()
+    EventApplication.create_table()
+    Class.create_table()
+    ClassApplication.create_table()
+    YouthClubApplication.create_table()
+    Museum.create_table()
+    MuseumApplication.create_table()
+    Proposal.create_table()
 
-# МЕСТО ДЛЯ КОММАНД
-
+#region Backup
 # Class.create(name="EVERYDAY ENGLISH. KIDS", 
 #              text="Изучение бытового и разговорного английского с помощью фильмов, игр и мультиков. Полное погружение в процесс обучения – все общение будет проходить преимущественно на английском языке. \n\nИзучим сленг, идиомы и цитаты. Нескучный английский. \n\nКаждое воскресенье. 12:00-13:00. Дети 6-13 лет. Стоимость 800 р.\n\nАбонемент 3200\n\nНачало 3 сентября.", 
 #              picture="everyday_english.jpg", 
@@ -189,5 +196,6 @@ Proposal.create_table()
 #              text="Основы китайского языка, знакомство с китайской культурой и написанием иероглифов. \n\nВозраст: мл гр. 10-14 лет, от 14 лет\n\nРасписание: воскресенье мл гр 12:30 до 13:30, с 14:00 до 15:00.\n\nСтоимость разово 800 р, абонемент 3200. \n\nНачало 3 сентября", 
 #              picture="chinese.jpg",
 #              pushkin_card=True)
+#endregion
 
 db.close()
