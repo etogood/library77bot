@@ -90,7 +90,7 @@ async def pushkin_card(callback: types.CallbackQuery):
 @basic_router.callback_query(F.data == "classes")
 async def classes(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):
-        await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list())
+        await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list(None))
         await callback.answer()
 
 
@@ -101,19 +101,19 @@ async def classes(callback: types.CallbackQuery):
 @club_application_router.callback_query(F.data == "apply_for_club_membership")
 async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
-        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.cancel_menu)
+        await callback.message.answer(text = text.apply_name, reply_markup = kb.cancel_menu)
         await state.set_state(states.ApplyForClubMembership.fill_name)
-        await callback.answer(text="Оформление заявки начато")
+        await callback.answer(text = "Оформление заявки начато")
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
-    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
     await state.set_state(states.ApplyForClubMembership.fill_phone)
 
 @club_application_router.message(states.ApplyForClubMembership.fill_name)
 async def name_filled_incorrectly(message: Message):
-    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
 
 @club_application_router.message(states.ApplyForClubMembership.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
 async def phone_filled(message: Message, state: FSMContext):
@@ -127,7 +127,7 @@ async def phone_filled(message: Message, state: FSMContext):
 
 @club_application_router.message(states.ApplyForClubMembership.fill_phone)
 async def phone_filled_incorrectly(message: Message):
-    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_phone_filled_incorrectly, reply_markup = kb.cancel_menu)
 
 #endregion
 
@@ -137,19 +137,19 @@ async def phone_filled_incorrectly(message: Message):
 async def apply_for_event(callback: types.CallbackQuery, callback_data: kb.CallbackFactory, state: FSMContext):
     with suppress(TelegramBadRequest):
         await state.update_data(event_id = callback_data.id)
-        await callback.message.answer(text = "Введите своё полное имя:", reply_markup = kb.cancel_menu)
+        await callback.message.answer(text = text.apply_name, reply_markup = kb.cancel_menu)
         await state.set_state(states.ApplyForEvent.fill_name)
         await callback.answer(text="Оформление заявки начато")
 
 @event_application_router.message(states.ApplyForEvent.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
-    await message.answer(text = "Теперь введите ваш номер телефона:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
     await state.set_state(states.ApplyForEvent.fill_phone)
 
 @event_application_router.message(states.ApplyForEvent.fill_name)
 async def name_filled_incorrectly(message: Message):
-    await message.answer(text = "Имя не должно содержать лишних символов\n\nПопробуйте ввести своё имя ещё раз:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
 
 @event_application_router.message(states.ApplyForEvent.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
 async def phone_filled(message: Message, state: FSMContext):
@@ -164,7 +164,7 @@ async def phone_filled(message: Message, state: FSMContext):
 
 @event_application_router.message(states.ApplyForEvent.fill_phone)
 async def phone_filled_incorrectly(message: Message):
-    await message.answer(text="Неверный формат номера телефона\n\nПопробуйте ввести номер телефона ещё раз:", reply_markup = kb.cancel_menu)
+    await message.answer(text = text.apply_phone_filled_incorrectly, reply_markup = kb.cancel_menu)
 
 #endregion
 
@@ -181,7 +181,7 @@ async def show_event_fab(callback: types.CallbackQuery, callback_data: kb.Callba
 
 async def send_class_info(message: types.Message, text: str, callback_data: kb.CallbackFactory):
     with suppress(TelegramBadRequest):
-        await message.edit_text(text = text, reply_markup = kb.get_classes_list())
+        await message.edit_text(text = text, reply_markup = kb.get_classes_list(callback_data.id))
         pics = db.get_class_pictures(callback_data.id)
         if pics != None: await message.answer_media_group(media = pics)
 

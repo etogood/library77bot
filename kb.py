@@ -1,20 +1,16 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from typing import Optional
+from aiogram.types import *
+from aiogram.utils.keyboard import *
 from aiogram.filters.callback_data import CallbackData
+from typing import Optional
 
 import db
 import text
 
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import *
 
 class CallbackFactory(CallbackData, prefix="eventfab"):
     action: str
     id: Optional[int]
-
-def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
-    row = [KeyboardButton(text=item) for item in items]
-    return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
 
 main_menu = [
     [InlineKeyboardButton(text = text.schedule_button_text, callback_data = "schedule")],
@@ -32,17 +28,28 @@ youth_club_menu = InlineKeyboardMarkup(
     inline_keyboard = [[InlineKeyboardButton(text = text.apply_club_button_text, callback_data = "apply_for_club_membership", resize_keyboard = True)],
                        [InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu", resize_keyboard = True)]])
 
-def get_classes_list():
+def get_classes_list(current_id: Optional[int]):
     classes_builder = InlineKeyboardBuilder()
+    apply_builder = InlineKeyboardBuilder()
+
+    if current_id != None: 
+        apply_builder.button(
+            text = text.apply_class_button_text.format(name = db.Class.get_by_id(current_id).name), 
+            callback_data = CallbackFactory(action = "apply_for_class", id = current_id))
+
     classes_dictionary = db.get_classes()
     try:
         for item in classes_dictionary:
             classes_builder.button(text = item.name, callback_data = CallbackFactory(action = "show_class", id = item.class_id))
     except:
         classes_builder.button(text = text.empty_button_text, callback_data = CallbackFactory(action = "go_back"))
-    classes_builder.button(text = text.to_main_menu, callback_data = "to_main_menu")
     classes_builder.adjust(2)
-    return classes_builder.as_markup(resize_keyboard = True)
+
+    classes_keyboard = classes_builder.as_markup().inline_keyboard
+    apply_keyboard = apply_builder.as_markup().inline_keyboard
+    keyboard = apply_keyboard + classes_keyboard + [[InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu")]]
+            
+    return InlineKeyboardMarkup(inline_keyboard = keyboard, resize_keyboard = True)
 
 def get_events_list(current_id: Optional[int]):
     events_builder = InlineKeyboardBuilder()
