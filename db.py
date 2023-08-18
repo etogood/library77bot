@@ -3,6 +3,7 @@ from aiogram.types import FSInputFile, InputMediaPhoto
 from contextlib import suppress
 
 import os.path
+import time
 
 db = SqliteDatabase("db.sqlite")
 
@@ -86,6 +87,7 @@ class MuseumApplication(BaseModel):
     class Meta:
         table_name = "MuseumApplications"
 
+# Предложения партнёрства
 class Proposal(BaseModel):
     proposal_id = AutoField(column_name="ProposalId")
     text = TextField(column_name="Text", null=False)

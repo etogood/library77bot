@@ -6,8 +6,6 @@ from typing import Optional
 import db
 import text
 
-from aiogram.types import *
-
 class CallbackFactory(CallbackData, prefix="eventfab"):
     action: str
     id: Optional[int]

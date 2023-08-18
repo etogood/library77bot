@@ -9,9 +9,13 @@ from aiogram.filters import Command, Text
 from aiogram.fsm.context import FSMContext
 
 import kb
+import admin.kb
 import db
 import text
+import admin.text
 import states
+
+from config_reader import config
 
 basic_router = Router()
 club_application_router = Router()
@@ -19,33 +23,38 @@ event_application_router = Router()
 class_application_router = Router()
 museum_application_router = Router()
 
+phone_regex = r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$" # matches: +79001234567; +7(900)123-45-67; 8 900 123-45-67; etc.
+name_regex = r"^([а-яёА-ЯЁ ]+)$" # cyrilic letters only
+
 # Menu ----------------------------------------------------------------------------------------------------
 
 # /start
 @basic_router.message(Command("start"))
 @basic_router.message(Text(text="старт", ignore_case=True))
 async def cmd_start(msg: Message):
+    if msg.from_user.id in config.admin_ids: await msg.answer(admin.text.admin_main_menu, reply_markup = admin.kb.main_menu) # calls admin's menu
     await msg.answer(text.greet.format(name = msg.from_user.full_name), reply_markup = kb.main_menu)
 
 # /menu
 @basic_router.message(Command("menu"))
 @basic_router.message(Text(text="меню", ignore_case=True))
 async def cmd_menu(msg: Message):
+    if msg.from_user.id in config.admin_ids: await msg.answer(admin.text.admin_main_menu, reply_markup = admin.kb.main_menu) # calls admin's menu
     await msg.answer(text.main_menu, reply_markup = kb.main_menu)
 
 # Отмена
 @basic_router.callback_query(F.data == "cancel_action")
-async def main_menu(callback: types.CallbackQuery, state: FSMContext):
+async def cancel_action(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
         await state.clear()
-        await callback.message.edit_text(text = "❌ Действие отменено")
+        await callback.message.edit_text(text = text.action_canceled)
         await callback.answer()
         await asyncio.sleep(1)
         await callback.message.delete()
 
 # Главное меню
 @basic_router.callback_query(F.data == "to_main_menu")
-async def main_menu(callback: types.CallbackQuery, state: FSMContext):
+async def to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     with suppress(TelegramBadRequest):
         await state.clear()
         await callback.message.edit_text(text = text.main_menu, reply_markup = kb.main_menu)
@@ -93,7 +102,7 @@ async def classes(callback: types.CallbackQuery):
         await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_classes_list(None))
         await callback.answer()
 
-# Кружки
+# Партнёрство
 @basic_router.callback_query(F.data == "partnership")
 async def partnership(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):
@@ -112,7 +121,7 @@ async def apply_for_club_membership(callback: types.CallbackQuery, state: FSMCon
         await state.set_state(states.ApplyForClubMembership.fill_name)
         await callback.answer(text = "Оформление заявки начато")
 
-@club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
+@club_application_router.message(states.ApplyForClubMembership.fill_name, F.text.regexp(name_regex))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
     await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
@@ -122,7 +131,7 @@ async def name_filled(message: Message, state: FSMContext):
 async def name_filled_incorrectly(message: Message):
     await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
 
-@club_application_router.message(states.ApplyForClubMembership.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+@club_application_router.message(states.ApplyForClubMembership.fill_phone, F.text.regexp(phone_regex))
 async def phone_filled(message: Message, state: FSMContext):
     await state.update_data(filled_phone = message.text)
     user_data = await state.get_data()
@@ -148,7 +157,7 @@ async def apply_for_event(callback: types.CallbackQuery, callback_data: kb.Callb
         await state.set_state(states.ApplyForEvent.fill_name)
         await callback.answer(text="Оформление заявки начато")
 
-@event_application_router.message(states.ApplyForEvent.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
+@event_application_router.message(states.ApplyForEvent.fill_name, F.text.regexp(name_regex))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
     await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
@@ -158,7 +167,7 @@ async def name_filled(message: Message, state: FSMContext):
 async def name_filled_incorrectly(message: Message):
     await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
 
-@event_application_router.message(states.ApplyForEvent.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+@event_application_router.message(states.ApplyForEvent.fill_phone, F.text.regexp(phone_regex))
 async def phone_filled(message: Message, state: FSMContext):
     await state.update_data(filled_phone = message.text)
     user_data = await state.get_data()
@@ -185,7 +194,7 @@ async def apply_for_class(callback: types.CallbackQuery, callback_data: kb.Callb
         await state.set_state(states.ApplyForClass.fill_name)
         await callback.answer(text="Оформление заявки начато")
 
-@class_application_router.message(states.ApplyForClass.fill_name, F.text.regexp(r"^([а-яёА-ЯЁ ]+)$"))
+@class_application_router.message(states.ApplyForClass.fill_name, F.text.regexp(name_regex))
 async def name_filled(message: Message, state: FSMContext):
     await state.update_data(filled_name = message.text)
     await message.answer(text = text.apply_phone, reply_markup = kb.cancel_menu)
@@ -195,7 +204,7 @@ async def name_filled(message: Message, state: FSMContext):
 async def name_filled_incorrectly(message: Message):
     await message.answer(text = text.apply_name_filled_incorrectly, reply_markup = kb.cancel_menu)
 
-@class_application_router.message(states.ApplyForClass.fill_phone, F.text.regexp(r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$"))
+@class_application_router.message(states.ApplyForClass.fill_phone, F.text.regexp(phone_regex))
 async def phone_filled(message: Message, state: FSMContext):
     await state.update_data(filled_phone = message.text)
     user_data = await state.get_data()
