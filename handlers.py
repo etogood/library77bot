@@ -21,7 +21,6 @@ basic_router = Router()
 club_application_router = Router()
 event_application_router = Router()
 class_application_router = Router()
-museum_application_router = Router()
 
 phone_regex = r"^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$" # matches: +79001234567; +7(900)123-45-67; 8 900 123-45-67; etc.
 name_regex = r"^([а-яёА-ЯЁ ]+)$" # cyrilic letters only
@@ -81,11 +80,18 @@ async def youth_club(callback: types.CallbackQuery):
         await callback.message.edit_text(text.youth_club, reply_markup = kb.youth_club_menu)
         await callback.answer()
 
-# Музей
-@basic_router.callback_query(F.data == "museum")
-async def museum(callback: types.CallbackQuery):
+# Платное / бесплатное
+@basic_router.callback_query(F.data == "digest")
+async def kids_classes(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(text.empty_button_text, reply_markup = kb.main_menu)
+        await callback.answer()
+
+# Кружки (до 10 лет)
+@basic_router.callback_query(F.data == "kids_classes")
+async def kids_classes(callback: types.CallbackQuery):
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(text.classes_menu, reply_markup = kb.get_kids_classes_list(None))
         await callback.answer()
 
 # Пушкинская карта
@@ -95,7 +101,7 @@ async def pushkin_card(callback: types.CallbackQuery):
         await callback.message.edit_text(text.pushkin_card, reply_markup = kb.main_menu)
         await callback.answer()
 
-# Кружки
+# Учебные курсы
 @basic_router.callback_query(F.data == "classes")
 async def classes(callback: types.CallbackQuery):
     with suppress(TelegramBadRequest):

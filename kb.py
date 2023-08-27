@@ -11,13 +11,15 @@ class CallbackFactory(CallbackData, prefix="eventfab"):
     id: Optional[int]
 
 main_menu = InlineKeyboardMarkup(
-    inline_keyboard = [[InlineKeyboardButton(text = text.schedule_button_text, callback_data = "schedule")],
-                       [InlineKeyboardButton(text = text.events_button_text, callback_data = "events")],
-                       [InlineKeyboardButton(text = text.youth_club_button_text, callback_data = "youth_club")],
-                       [InlineKeyboardButton(text = text.museum_button_text, callback_data = "museum")],
-                       [InlineKeyboardButton(text = text.pushkin_card_button_text, callback_data = "pushkin_card")],
+    inline_keyboard = [
                        [InlineKeyboardButton(text = text.classes_button_text, callback_data = "classes")],
+                       [InlineKeyboardButton(text = text.kids_classes_button_text, callback_data = "kids_classes")],
+                       [InlineKeyboardButton(text = text.events_button_text, callback_data = "events")],
+                       [InlineKeyboardButton(text = text.digest_button_text, callback_data = "digest")],
+                       [InlineKeyboardButton(text = text.youth_club_button_text, callback_data = "youth_club")],
+                       [InlineKeyboardButton(text = text.pushkin_card_button_text, callback_data = "pushkin_card")],
                        [InlineKeyboardButton(text = text.partnership_button_text, callback_data = "partnership")],
+                       [InlineKeyboardButton(text = text.schedule_button_text, callback_data = "schedule")],
                        ], resize_keyboard = True)
 
 cancel_menu = InlineKeyboardMarkup(inline_keyboard = [[InlineKeyboardButton(text = text.cancel_action, callback_data = "cancel_action")]], resize_keyboard = True)
@@ -42,7 +44,32 @@ def get_classes_list(current_id: Optional[int]) -> InlineKeyboardMarkup :
     classes_dictionary = db.get_classes()
     try:
         for item in classes_dictionary:
-            classes_builder.button(text = item.name, callback_data = CallbackFactory(action = "show_class", id = item.class_id))
+            if item.is_for_kids == False:
+                classes_builder.button(text = item.name, callback_data = CallbackFactory(action = "show_class", id = item.class_id))
+    except:
+        classes_builder.button(text = text.empty_button_text, callback_data = CallbackFactory(action = "go_back"))
+    classes_builder.adjust(2)
+
+    classes_keyboard = classes_builder.as_markup().inline_keyboard
+    apply_keyboard = apply_builder.as_markup().inline_keyboard
+    keyboard = apply_keyboard + classes_keyboard + [[InlineKeyboardButton(text = text.to_main_menu, callback_data = "to_main_menu")]]
+            
+    return InlineKeyboardMarkup(inline_keyboard = keyboard, resize_keyboard = True)
+
+def get_kids_classes_list(current_id: Optional[int]) -> InlineKeyboardMarkup :
+    classes_builder = InlineKeyboardBuilder()
+    apply_builder = InlineKeyboardBuilder()
+
+    if current_id != None: 
+        apply_builder.button(
+            text = text.apply_class_button_text.format(name = db.Class.get_by_id(current_id).name), 
+            callback_data = CallbackFactory(action = "apply_for_class", id = current_id))
+
+    classes_dictionary = db.get_classes()
+    try:
+        for item in classes_dictionary:
+            if item.is_for_kids == True:
+                classes_builder.button(text = item.name, callback_data = CallbackFactory(action = "show_class", id = item.class_id))
     except:
         classes_builder.button(text = text.empty_button_text, callback_data = CallbackFactory(action = "go_back"))
     classes_builder.adjust(2)
