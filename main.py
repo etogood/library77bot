@@ -6,11 +6,14 @@ from aiogram.enums.parse_mode import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.strategy import FSMStrategy
 
+from aiogram.client.session.aiohttp import AiohttpSession
+
 from config_reader import config
 from handlers import basic_router, club_application_router, event_application_router, class_application_router
 from admin.handlers import admin_router
 
-bot = Bot(token=config.bot_token.get_secret_value(), parse_mode=ParseMode.HTML)
+session = AiohttpSession(proxy=('http://82.119.96.254:80'))
+bot = Bot(token=config.bot_token.get_secret_value(), session=session, parse_mode=ParseMode.HTML)
 
 async def main():
     logging.basicConfig(
